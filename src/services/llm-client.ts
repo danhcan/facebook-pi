@@ -96,6 +96,8 @@ export class LLMClient {
       messages,
       temperature: options?.temperature ?? config.llm.temperature,
       max_tokens: options?.max_tokens ?? config.llm.maxTokens,
+      // Tắt streaming để nhận JSON response đầy đủ
+      stream: false as any,
     };
 
     const controller = new AbortController();
@@ -107,6 +109,7 @@ export class LLMClient {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.apiKey}`,
+          Accept: 'application/json',
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,
@@ -119,7 +122,9 @@ export class LLMClient {
         throw new Error(`LLM API error (${response.status}): ${errorText}`);
       }
 
-      const data = await response.json() as any;
+      // Lấy text raw để handle cả 2 trường hợp: JSON hoặc SSE
+      const text = await response.text();
+      const data = this.parseResponse(text);
 
       // Parse OpenAI-compatible response format
       const content = data.choices?.[0]?.message?.content || '';
@@ -143,6 +148,63 @@ export class LLMClient {
       }
 
       throw error;
+    }
+  }
+
+  /**
+   * Parse response - handle cả JSON và SSE streaming format
+   * - JSON: {"id":"...","choices":[...]}
+   * - SSE:  data: {"id":"...","choices":[...]}")\n\ndata: [DONE]
+   */
+  private parseResponse(text: string): any {
+    const trimmed = text.trim();
+
+    // Trường hợp 1: Response là JSON thông thường
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        return JSON.parse(trimmed);
+      } catch {
+        // fallback sang SSE parsing
+      }
+    }
+
+    // Trường hợp 2: Response là SSE streaming (data: {...}\n\ndata: {...}\n\ndata: [DONE])
+    try {
+      const lines = trimmed.split('\n').filter((line) => line.trim() && line.startsWith('data:'));
+      
+      // Gộp tất cả content từ SSE chunks
+      let fullContent = '';
+      let usage: any = undefined;
+      let model: string | undefined;
+      let lastId: string | undefined;
+
+      for (const line of lines) {
+        const jsonPart = line.replace(/^data:\s*/, '').trim();
+        
+        // Skip [DONE] marker
+        if (jsonPart === '[DONE]') continue;
+        
+        try {
+          const chunk = JSON.parse(jsonPart);
+          const delta = chunk.choices?.[0]?.delta?.content;
+          if (delta) fullContent += delta;
+          if (chunk.usage) usage = chunk.usage;
+          if (chunk.model) model = chunk.model;
+          if (chunk.id) lastId = chunk.id;
+        } catch {
+          // Skip invalid JSON line
+        }
+      }
+
+      // Trả về format giống non-stream response
+      return {
+        id: lastId,
+        model: model,
+        choices: [{ message: { content: fullContent } }],
+        usage: usage || { total_tokens: 0 },
+      };
+    } catch {
+      throw new Error(`Failed to parse LLM response: ${trimmed.slice(0, 200)}`);
     }
   }
 
