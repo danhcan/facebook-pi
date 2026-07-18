@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model FacebookAccount {
+  id                String        @id @default(uuid())
+  userId            String
+  facebookUserId    String        @unique
+  displayName       String
+  accessToken       String
+  tokenExpiresAt    DateTime
+  status            String        @default("active")
+  connectedAt       DateTime      @default(now())
+  lastSyncAt        DateTime?
+  conversations     Conversation[]
+  user              User          @relation(fields: [userId], references: [id])
+
+  @@unique([userId, facebookUserId])
+  @@index([userId])
+  @@index([status])
+}
+
+model Conversation {
+  id                      String          @id @default(uuid())
+  accountId               String
+  facebookConversationId  String          @unique
+  participantName         String
+  participantFacebookId   String
+  status                  String          @default("active")
+  autoReplyMode           String          @default("automatic")
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+  account                 FacebookAccount @relation(fields: [accountId], references: [id])
+  messages                Message[]
+
+  @@index([accountId])
+  @@index([facebookConversationId])
+}
+
+model Message {
+  id                String              @id @default(uuid())
+  conversationId    String
+  direction         String
+  content           String
+  messageType       String              @default("text")
+  classification    String?
+  senderId          String
+  facebookMessageId String?             @unique
+  status            String              @default("received")
+  createdAt         DateTime            @default(now())
+  sentAt            DateTime?
+  conversation      Conversation        @relation(fields: [conversationId], references: [id])
+  aiResponses       AiResponse[]
+  messageQueue      MessageQueue?
+
+  @@index([conversationId, createdAt])
+  @@index([classification])
+  @@index([status])
+}
+
+model AiResponse {
+  id                String          @id @default(uuid())
+  messageId         String
+  content           String
+  confidence        Float
+  knowledgeItemId   String?
+  status            String          @default("pending")
+  approvedBy        String?
+  approvedAt        DateTime?
+  sentAt            DateTime?
+  feedback          String?
+  createdAt         DateTime        @default(now())
+  message           Message         @relation(fields: [messageId], references: [id])
+  knowledgeItem     KnowledgeItem?  @relation(fields: [knowledgeItemId], references: [id])
+
+  @@index([messageId])
+  @@index([status])
+}
+
+model KnowledgeItem {
+  id            String          @id @default(uuid())
+  userId        String
+  title         String
+  content       String
+  category      String          @default("custom")
+  tags          String          @default("[]")
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  aiResponses   AiResponse[]
+  user          User            @relation(fields: [userId], references: [id])
+
+  @@index([userId, category])
+  @@index([isActive])
+}
+
+model MessageQueue {
+  id          String      @id @default(uuid())
+  messageId   String      @unique
+  priority    Int         @default(5)
+  status      String      @default("queued")
+  retryCount  Int         @default(0)
+  errorMessage String?
+  createdAt   DateTime    @default(now())
+  processedAt DateTime?
+  message     Message     @relation(fields: [messageId], references: [id])
+
+  @@index([status, priority])
+}
+
+model User {
+  id              String            @id @default(uuid())
+  email           String            @unique
+  name            String
+  passwordHash    String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  accounts        FacebookAccount[]
+  knowledgeItems  KnowledgeItem[]
+
+  @@index([email])
+}

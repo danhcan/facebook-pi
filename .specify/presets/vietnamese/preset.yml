@@ -1,0 +1,51 @@
+schema_version: "1.0"
+
+preset:
+  id: "vietnamese"
+  name: "Tiếng Việt"
+  version: "1.0.0"
+  description: "Bản dịch tiếng Việt cho các template và workflow của Spec Kit"
+  author: "community"
+  repository: "https://github.com/community/spec-kit-preset-vietnamese"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.6.0"
+
+provides:
+  templates:
+    - type: "template"
+      name: "spec-template"
+      file: "templates/spec-template.md"
+      description: "Mẫu đặc tả tính năng tiếng Việt"
+      replaces: "spec-template"
+
+    - type: "template"
+      name: "plan-template"
+      file: "templates/plan-template.md"
+      description: "Mẫu kế hoạch triển khai tiếng Việt"
+      replaces: "plan-template"
+
+    - type: "template"
+      name: "tasks-template"
+      file: "templates/tasks-template.md"
+      description: "Mẫu danh sách nhiệm vụ tiếng Việt"
+      replaces: "tasks-template"
+
+    - type: "template"
+      name: "constitution-template"
+      file: "templates/constitution-template.md"
+      description: "Mẫu hiến pháp dự án tiếng Việt"
+      replaces: "constitution-template"
+
+    - type: "template"
+      name: "checklist-template"
+      file: "templates/checklist-template.md"
+      description: "Mẫu danh sách kiểm tra tiếng Việt"
+      replaces: "checklist-template"
+
+tags:
+  - "vietnamese"
+  - "tieng-viet"
+  - "localization"
+  - "template"

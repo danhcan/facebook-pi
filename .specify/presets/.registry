@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "presets": {
+    "vietnamese": {
+      "id": "vietnamese",
+      "name": "Tiếng Việt",
+      "version": "1.0.0",
+      "description": "Bản dịch tiếng Việt cho các template và workflow của Spec Kit",
+      "author": "community",
+      "installed_at": "2026-07-18T04:51:00Z",
+      "priority": 10,
+      "templates": [
+        "spec-template",
+        "plan-template",
+        "tasks-template",
+        "constitution-template",
+        "checklist-template"
+      ]
+    }
+  }
+}
