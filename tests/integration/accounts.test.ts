@@ -1,7 +1,16 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import request from 'supertest';
 import { app } from '../../src/app.js';
 import { prisma } from '../../src/config/prisma.js';
+
+// Force demo mode cho tests (bỏ qua Facebook API thật)
+vi.mock('../../src/services/facebook-api.js', async () => {
+  const actual = await vi.importActual('../../src/services/facebook-api.js');
+  return {
+    ...actual,
+    isConfigured: () => false,
+  };
+});
 
 const TEST_EMAIL = `accounts-test-${Date.now()}@test.com`;
 const TEST_PASSWORD = 'password123';
