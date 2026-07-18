@@ -10,6 +10,8 @@ import { webhookRoutes } from './routes/webhook.js';
 import { aiResponseRoutes } from './routes/ai-responses.js';
 import { statsRoutes } from './routes/stats.js';
 import { authRoutes } from './routes/auth.js';
+import settingsRoutes from './routes/settings.js';
+import zaloCallsRoutes from './routes/zalo-calls.js';
 
 export function createApp(): express.Express {
   const app = express();
@@ -27,6 +29,8 @@ export function createApp(): express.Express {
   app.use('/api/history', historyRoutes);
   app.use('/api/ai-responses', aiResponseRoutes);
   app.use('/api/stats', statsRoutes);
+  app.use('/api/settings', settingsRoutes);
+  app.use('/api/zalo-calls', zaloCallsRoutes);
   app.use('/webhook', webhookRoutes);
 
   // Health check

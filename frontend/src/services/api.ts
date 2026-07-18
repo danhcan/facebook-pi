@@ -106,4 +106,31 @@ export const historyApi = {
   },
 }
 
+// ── Settings (LLM config) ──
+export const settingsApi = {
+  getLLM: () => api.get('/settings/llm').then((r) => r.data),
+  updateLLM: (data: {
+    provider?: string
+    baseUrl?: string
+    apiKey?: string
+    model?: string
+    temperature?: number
+    maxTokens?: number
+    timeout?: number
+  }) => api.put('/settings/llm', data).then((r) => r.data),
+  testLLM: () => api.post('/settings/llm/test').then((r) => r.data),
+}
+
+// ── Zalo Calls ──
+export const zaloCallsApi = {
+  list: (params?: { status?: string; priority?: string; limit?: number; offset?: number }) =>
+    api.get('/zalo-calls', { params }).then((r) => r.data),
+  get: (id: string) => api.get(`/zalo-calls/${id}`).then((r) => r.data),
+  assign: (id: string) => api.post(`/zalo-calls/${id}/assign`).then((r) => r.data),
+  complete: (id: string, notes?: string) =>
+    api.post(`/zalo-calls/${id}/complete`, { notes }).then((r) => r.data),
+  cancel: (id: string, reason?: string) =>
+    api.post(`/zalo-calls/${id}/cancel`, { reason }).then((r) => r.data),
+}
+
 export default api

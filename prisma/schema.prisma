@@ -26,17 +26,18 @@ model FacebookAccount {
 }
 
 model Conversation {
-  id                      String          @id @default(uuid())
+  id                      String              @id @default(uuid())
   accountId               String
-  facebookConversationId  String          @unique
+  facebookConversationId  String              @unique
   participantName         String
   participantFacebookId   String
-  status                  String          @default("active")
-  autoReplyMode           String          @default("automatic")
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  account                 FacebookAccount @relation(fields: [accountId], references: [id])
+  status                  String              @default("active")
+  autoReplyMode           String              @default("automatic")
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+  account                 FacebookAccount     @relation(fields: [accountId], references: [id])
   messages                Message[]
+  zaloCallRequests        ZaloCallRequest[]
 
   @@index([accountId])
   @@index([facebookConversationId])
@@ -75,11 +76,18 @@ model AiResponse {
   sentAt            DateTime?
   feedback          String?
   createdAt         DateTime        @default(now())
+  // LLM monitoring fields
+  provider          String?         // "custom", "openai", "rule-based"
+  modelUsed         String?         // "hotro", "gpt-4", etc
+  tokensUsed        Int?
+  latencyMs         Int?            // Response time in milliseconds
+  errorMessage      String?         // Error if LLM call failed
   message           Message         @relation(fields: [messageId], references: [id])
   knowledgeItem     KnowledgeItem?  @relation(fields: [knowledgeItemId], references: [id])
 
   @@index([messageId])
   @@index([status])
+  @@index([provider])
 }
 
 model KnowledgeItem {
@@ -114,14 +122,39 @@ model MessageQueue {
 }
 
 model User {
-  id              String            @id @default(uuid())
-  email           String            @unique
-  name            String
-  passwordHash    String
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  accounts        FacebookAccount[]
-  knowledgeItems  KnowledgeItem[]
+  id                    String            @id @default(uuid())
+  email                 String            @unique
+  name                  String
+  passwordHash          String
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  accounts              FacebookAccount[]
+  knowledgeItems        KnowledgeItem[]
+  assignedZaloCalls     ZaloCallRequest[]
 
   @@index([email])
+}
+
+model ZaloCallRequest {
+  id              String        @id @default(uuid())
+  conversationId  String
+  customerId      String        // participantFacebookId from conversation
+  customerName    String
+  phoneNumber     String?       // Optional, customer can provide later
+  reason          String        // "low_confidence", "complex_question", "complaint_escalation"
+  priority        String        @default("normal") // "low", "normal", "high", "urgent"
+  status          String        @default("pending") // "pending", "assigned", "calling", "completed", "cancelled"
+  assignedTo      String?       // User ID
+  notes           String?       // Notes from agent after call
+  createdAt       DateTime      @default(now())
+  scheduledAt     DateTime?     // Planned call time
+  assignedAt      DateTime?
+  completedAt     DateTime?
+  conversation    Conversation  @relation(fields: [conversationId], references: [id])
+  assignedUser    User?         @relation(fields: [assignedTo], references: [id])
+
+  @@index([status, priority])
+  @@index([conversationId])
+  @@index([assignedTo])
+  @@index([createdAt])
 }
