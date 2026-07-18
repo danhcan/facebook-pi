@@ -3,6 +3,7 @@ import { logger } from '../utils/logger.js';
 import { aiResponder } from './ai-responder.js';
 import { knowledgeManager } from './knowledge-manager.js';
 import { sendToCustomer } from './message-sender.js';
+import { callEscalationService } from './call-escalation.js';
 
 export interface ProcessMessageInput {
   messageId: string;
@@ -92,27 +93,86 @@ export class MessageProcessor {
       const knowledgeResults = await knowledgeManager.searchRelevant(content, 1);
       const knowledgeContext = knowledgeResults[0]?.content;
 
-      // 4. Sinh câu trả lời AI
+      // 4. Sinh câu trả lời AI (với LLM integration)
       const aiResponse = await aiResponder.generateResponse({
         content,
         classification: classification as any,
         knowledgeContext,
+        conversationId: convId,
       });
 
-      // 5. Lưu AiResponse
+      // 5. Lưu AiResponse với monitoring data
       const saved = await prisma.aiResponse.create({
         data: {
           messageId: message.id,
           content: aiResponse.content,
           confidence: aiResponse.confidence,
           status: 'pending',
+          provider: aiResponse.provider,
+          modelUsed: aiResponse.modelUsed,
+          tokensUsed: aiResponse.tokensUsed,
+          latencyMs: aiResponse.latencyMs,
         },
       });
+
+      // 5a. Check if escalation needed (low confidence → Zalo call)
+      if (aiResponse.needsEscalation) {
+        const hasPending = await callEscalationService.hasPendingRequest(convId);
+
+        if (!hasPending) {
+          const conv = await prisma.conversation.findUnique({
+            where: { id: convId },
+            select: { participantName: true, participantFacebookId: true },
+          });
+
+          if (conv) {
+            // Create Zalo call request
+            await callEscalationService.createCallRequest({
+              conversationId: convId,
+              customerId: conv.participantFacebookId,
+              customerName: conv.participantName,
+              reason: 'low_confidence',
+              confidence: aiResponse.confidence,
+            });
+
+            // Send confirmation message to customer
+            const priority =
+              aiResponse.confidence < 0.3
+                ? 'urgent'
+                : aiResponse.confidence < 0.5
+                ? 'high'
+                : 'normal';
+            const confirmMsg = callEscalationService.getConfirmationMessage(priority);
+
+            await sendToCustomer(resolvedAccountId, senderId, confirmMsg);
+            await prisma.message.create({
+              data: {
+                conversationId: convId,
+                direction: 'outbound',
+                content: confirmMsg,
+                messageType: 'text',
+                senderId: recipientId,
+                status: 'sent',
+                sentAt: new Date(),
+              },
+            });
+
+            logger.info(
+              { responseId: saved.id, confidence: aiResponse.confidence },
+              'Call escalation triggered'
+            );
+          }
+        }
+      }
 
       // 6. Nếu chế độ automatic → tự gửi (đánh dấu sent + tạo message outbound)
       if (autoReplyMode === 'automatic') {
         // Gửi qua Facebook Send API (real mode) hoặc skip (demo mode)
-        const fbMessageId = await sendToCustomer(resolvedAccountId, senderId, aiResponse.content);
+        const fbMessageId = await sendToCustomer(
+          resolvedAccountId,
+          senderId,
+          aiResponse.content
+        );
         await prisma.aiResponse.update({
           where: { id: saved.id },
           data: { status: 'sent', sentAt: new Date() },
