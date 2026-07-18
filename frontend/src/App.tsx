@@ -8,6 +8,8 @@ import Conversations from './pages/Conversations'
 import Knowledge from './pages/Knowledge'
 import AiResponses from './pages/AiResponses'
 import Stats from './pages/Stats'
+import Settings from './pages/Settings'
+import ZaloCalls from './pages/ZaloCalls'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -42,6 +44,8 @@ function AppRoutes() {
         <Route path="knowledge" element={<Knowledge />} />
         <Route path="ai-responses" element={<AiResponses />} />
         <Route path="stats" element={<Stats />} />
+        <Route path="zalo-calls" element={<ZaloCalls />} />
+        <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

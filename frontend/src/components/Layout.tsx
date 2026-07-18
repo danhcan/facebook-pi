@@ -7,24 +7,30 @@ import {
   BookOpen, 
   BarChart3,
   Search,
-  LogOut
+  LogOut,
+  Phone,
+  Settings as SettingsIcon
 } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useNotifications } from '../hooks/useNotifications'
 
 const dockItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/conversations', icon: MessageSquare, label: 'Chat' },
+  { to: '/zalo-calls', icon: Phone, label: 'Zalo', badge: true },
   { to: '/accounts', icon: Globe, label: 'Tài khoản' },
   { to: '/ai-responses', icon: Bot, label: 'AI' },
   { to: '/knowledge', icon: BookOpen, label: 'Kiến thức' },
   { to: '/stats', icon: BarChart3, label: 'Thống kê' },
+  { to: '/settings', icon: SettingsIcon, label: 'Cấu hình' },
 ]
 
 export default function Layout() {
   const [spotlightOpen, setSpotlightOpen] = useState(false)
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const { pendingCallsCount, clearPendingCalls } = useNotifications()
 
   const handleLogout = () => {
     logout()
@@ -74,6 +80,14 @@ export default function Layout() {
 
         {/* Right: Profile */}
         <div className="flex items-center gap-3">
+          {pendingCallsCount > 0 && (
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg" style={{ background: 'var(--color-danger-soft)' }}>
+              <Phone className="w-3.5 h-3.5" style={{ color: 'var(--color-danger)' }} />
+              <span className="text-xs font-medium" style={{ color: 'var(--color-danger)' }}>
+                {pendingCallsCount}
+              </span>
+            </div>
+          )}
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{user?.name || 'Admin'}</span>
           <div 
             className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium"
@@ -113,7 +127,12 @@ export default function Layout() {
             key={item.to}
             to={item.to}
             end={item.to === '/'}
-            className="flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all duration-150 min-w-[56px]"
+            onClick={() => {
+              if (item.to === '/zalo-calls' && pendingCallsCount > 0) {
+                clearPendingCalls()
+              }
+            }}
+            className="relative flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all duration-150 min-w-[56px]"
             style={({ isActive }: { isActive: boolean }) => ({
               background: isActive ? 'var(--color-accent-soft)' : 'transparent',
             })}
@@ -130,6 +149,14 @@ export default function Layout() {
             >
               {item.label}
             </span>
+            {item.badge && pendingCallsCount > 0 && (
+              <span
+                className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
+                style={{ background: 'var(--color-danger)', color: 'white' }}
+              >
+                {pendingCallsCount}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
