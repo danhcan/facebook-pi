@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plus, RefreshCw, ExternalLink, Trash2, X, Check } from 'lucide-react'
+import { Plus, RefreshCw, ExternalLink, Trash2, X, Check, AlertCircle } from 'lucide-react'
 import { accountsApi } from '../services/api'
 
 interface Account {
@@ -20,6 +20,7 @@ export default function Accounts() {
   const [newFbId, setNewFbId] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [fbConfigured, setFbConfigured] = useState(false)
 
   const load = () => {
     setLoading(true)
@@ -29,9 +30,38 @@ export default function Accounts() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  const checkFbStatus = async () => {
+    try {
+      const res = await accountsApi.getFacebookStatus()
+      setFbConfigured(res.configured)
+    } catch (err) {
+      setFbConfigured(false)
+    }
+  }
 
-  const handleConnect = async (e: React.FormEvent) => {
+  useEffect(() => {
+    load()
+    checkFbStatus()
+  }, [])
+
+  const handleConnectReal = async () => {
+    try {
+      setBusy(true)
+      setError('')
+      
+      // Get OAuth URL from backend
+      const redirectUri = `${window.location.origin}/accounts/callback`
+      const res = await accountsApi.getOAuthUrl(redirectUri)
+      
+      // Redirect to Facebook OAuth dialog
+      window.location.href = res.url
+    } catch (err: any) {
+      setError(err?.response?.data?.error || 'Không thể kết nối Facebook')
+      setBusy(false)
+    }
+  }
+
+  const handleConnectDemo = async (e: React.FormEvent) => {
     e.preventDefault()
     setBusy(true)
     setError('')
@@ -87,14 +117,34 @@ export default function Accounts() {
           </p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+          onClick={() => fbConfigured ? handleConnectReal() : setShowModal(true)}
+          disabled={busy}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-50"
           style={{ background: 'var(--color-accent)', color: 'var(--color-accent-ink)' }}
         >
           <Plus className="w-4 h-4" />
-          Kết nối
+          {busy ? 'Đang kết nối...' : 'Kết nối Facebook'}
         </button>
       </div>
+
+      {/* FB Not Configured Warning */}
+      {!fbConfigured && (
+        <div
+          className="rounded-xl p-4 flex items-start gap-3"
+          style={{ background: 'var(--color-warning-soft)' }}
+        >
+          <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--color-warning)' }} />
+          <div className="flex-1">
+            <p className="text-sm font-medium" style={{ color: 'var(--color-ink)' }}>
+              Chế độ Demo
+            </p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+              Facebook App chưa được cấu hình. Đang dùng demo mode (không kết nối thật).
+              Để kết nối thật, vui lòng cấu hình FACEBOOK_APP_ID và FACEBOOK_APP_SECRET trong .env
+            </p>
+          </div>
+        </div>
+      )}
 
       {error && <p className="text-sm" style={{ color: 'var(--color-danger)' }}>{error}</p>}
 
@@ -142,20 +192,20 @@ export default function Accounts() {
         ))}
         {!loading && accounts.length === 0 && (
           <div className="text-center py-12 rounded-2xl" style={{ background: 'var(--color-paper-2)', border: '1px solid var(--color-paper-4)' }}>
-            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Chưa có tài khoản nào. Nhấn "Kết nối" để bắt đầu.</p>
+            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Chưa có tài khoản nào. Nhấn "Kết nối Facebook" để bắt đầu.</p>
           </div>
         )}
       </div>
 
-      {/* ── Connect modal (demo) ── */}
-      {showModal && (
+      {/* ── Connect modal (demo mode only) ── */}
+      {showModal && !fbConfigured && (
         <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: 'oklch(0% 0 0 / 0.6)' }}>
           <div className="w-full max-w-lg rounded-2xl overflow-hidden" style={{ background: 'var(--color-paper-2)', border: '1px solid var(--color-paper-4)' }}>
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--color-paper-4)' }}>
-              <h2 className="text-base font-semibold" style={{ color: 'var(--color-ink)' }}>Kết nối tài khoản Facebook</h2>
+              <h2 className="text-base font-semibold" style={{ color: 'var(--color-ink)' }}>Kết nối tài khoản (Demo)</h2>
               <button onClick={() => setShowModal(false)}><X className="w-5 h-5" style={{ color: 'var(--color-muted)' }} /></button>
             </div>
-            <form className="p-6 space-y-4" onSubmit={handleConnect}>
+            <form className="p-6 space-y-4" onSubmit={handleConnectDemo}>
               <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
                 Chế độ demo: nhập thông tin tài khoản để mô phỏng kết nối OAuth (không gọi Facebook thật).
               </p>

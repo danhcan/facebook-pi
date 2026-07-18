@@ -47,6 +47,8 @@ export const accountsApi = {
     api.post('/accounts/connect', data).then((r) => r.data),
   disconnect: (id: string) => api.delete(`/accounts/${id}`).then((r) => r.data),
   refresh: (id: string) => api.post(`/accounts/${id}/refresh`).then((r) => r.data),
+  getOAuthUrl: (redirectUri: string) => api.get('/accounts/oauth/url', { params: { redirect_uri: redirectUri } }).then((r) => r.data),
+  getFacebookStatus: () => api.get('/accounts/facebook-status').then((r) => r.data),
 }
 
 // ── Conversations ──
