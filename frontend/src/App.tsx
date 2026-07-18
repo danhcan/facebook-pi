@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Accounts from './pages/Accounts'
+import AccountsCallback from './pages/AccountsCallback'
 import Conversations from './pages/Conversations'
 import Knowledge from './pages/Knowledge'
 import AiResponses from './pages/AiResponses'
@@ -37,6 +38,7 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      <Route path="/accounts/callback" element={<ProtectedRoute><AccountsCallback /></ProtectedRoute>} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="accounts" element={<Accounts />} />
